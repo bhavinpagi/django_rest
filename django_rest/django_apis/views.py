@@ -11,6 +11,10 @@ from .serializers import EmployeeSerializer
 from django.contrib.auth.models import User
 from django.contrib.auth import login, logout, authenticate
 from django.shortcuts import redirect
+from rest_framework import generics
+from rest_framework import filters
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
 
 
 def index(request):
@@ -57,3 +61,24 @@ def user_login(request):
             login(request, user=username)
             tokens = get_tokens_for_user(username)
             return JsonResponse(tokens)
+        
+class EmployeeList(generics.ListCreateAPIView):
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
+    filter_backends = [filters.OrderingFilter]
+
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        queryset = Employee.objects.all()
+        first_name = self.request.query_params.get('first_name')
+        last_name = self.request.query_params.get('last_name')
+        print(first_name, "first_name")
+        combined_filters = Q()
+        if first_name:
+            combined_filters |= Q(first_name__icontains=first_name)
+        if last_name:
+            combined_filters |= Q(last_name__icontains=last_name)
+
+        queryset = queryset.filter(combined_filters)
+        return queryset
